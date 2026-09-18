@@ -433,35 +433,4 @@ def feedback(body: FeedbackIn):
     return {"received": True, "status": 202}
 
 
-DEFAULT_INDEX_HTML = """<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>TerraWatch Live</title></head>
-<body style="font-family:system-ui;background:#0D1417;color:#E9F1EF;padding:30px">
-<h2>TerraWatch Live backend is running.</h2>
-<p>The bundled dashboard file (<code>static/index.html</code>) wasn't found in this
-deploy, so this minimal fallback page was generated automatically instead of
-crashing the server. The API itself is fully live — try:</p>
-<ul>
-<li><a style="color:#3FAE6B" href="/health">/health</a></li>
-<li><a style="color:#3FAE6B" href="/risk/current">/risk/current</a></li>
-<li><a style="color:#3FAE6B" href="/exposure/priority">/exposure/priority</a></li>
-</ul>
-<p>To restore the real dashboard, add <code>static/index.html</code> to your repo
-and redeploy — see DEPLOY.md.</p>
-</body></html>"""
-
-
-def ensure_static_dir():
-    """Defensive: never let a missing/misuploaded static/ folder crash the whole
-    service. If it's absent, create it with a minimal fallback page so the API
-    (the part that actually matters) still comes up and stays reachable."""
-    if not os.path.isdir("static"):
-        os.makedirs("static", exist_ok=True)
-    index_path = os.path.join("static", "index.html")
-    if not os.path.isfile(index_path):
-        with open(index_path, "w") as f:
-            f.write(DEFAULT_INDEX_HTML)
-        print("[startup] static/index.html was missing — wrote a fallback page instead of crashing.")
-
-
-ensure_static_dir()
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
