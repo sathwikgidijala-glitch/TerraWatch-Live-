@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>TerraWatch Live — SIH26001</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root{--bg:#0D1417;--panel:#131B1F;--panel2:#182226;--line:#26363C;--ink:#E9F1EF;--ink-dim:#87A0A0;
+    --green:#3FAE6B;--yellow:#E4B93C;--orange:#E2812F;--red:#D8453D}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,sans-serif}
+  header{padding:14px 20px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+  header b{font-size:16px}
+  #clock{font-family:monospace;color:var(--ink-dim);font-size:13px}
+  main{padding:20px;max-width:900px;margin:0 auto}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:14px}
+  .cell{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px;font-size:12px}
+  .lvl{font-weight:700;font-size:14px;margin:4px 0}
+  .Green .lvl{color:var(--green)} .Yellow .lvl{color:var(--yellow)} .Orange .lvl{color:var(--orange)} .Red .lvl{color:var(--red)}
+  .note{color:var(--ink-dim);font-size:12.5px;margin-top:16px;line-height:1.6}
+  table{width:100%;border-collapse:collapse;margin-top:10px;font-size:12.5px}
+  td,th{border-bottom:1px solid var(--line);padding:6px;text-align:left}
+  #status{font-size:12px;color:var(--ink-dim)}
+</style>
+</head>
+<body>
+<header>
+  <b>🛰 TerraWatch Live — East Khasi Hills pilot</b>
+  <div id="clock">IST —</div>
+</header>
+<main>
+  <div id="status">Connecting to live backend…</div>
+  <h3>Exposure-priority list (live)</h3>
+  <table id="expTable"><tr><th>Asset</th><th>Type</th><th>Level</th><th>Priority</th></tr></table>
+  <h3>Grid cells (live)</h3>
+  <div class="grid" id="grid"></div>
+  <p class="note">This page polls the real backend's <code>/risk/current</code> and <code>/exposure/priority</code> endpoints, which are refreshed every <span id="pollMin">15</span> minutes by a scheduled job pulling live rainfall from Open-Meteo. All times shown are IST (Asia/Kolkata).</p>
+</main>
+<script>
+const API = window.location.origin; // same origin as this page once deployed
+async function refresh(){
+  try{
+    const [cur, exp, health] = await Promise.all([
+      fetch(API+'/risk/current').then(r=>r.json()),
+      fetch(API+'/exposure/priority').then(r=>r.json()),
+      fetch(API+'/health').then(r=>r.json()),
+    ]);
+    document.getElementById('status').textContent = 'Connected — last refresh ' + new Date(cur.generated_at_ist).toLocaleString('en-IN',{timeZone:'Asia/Kolkata'});
+    document.getElementById('pollMin').textContent = health.poll_minutes;
+    const grid = document.getElementById('grid');
+    grid.innerHTML = cur.cells.map(c=>`<div class="cell ${c.level}"><div>R${c.r}C${c.c}</div><div class="lvl">${c.level}</div><div>risk ${c.risk_score}</div></div>`).join('');
+    const t = document.getElementById('expTable');
+    t.innerHTML = '<tr><th>Asset</th><th>Type</th><th>Level</th><th>Priority</th></tr>' +
+      exp.ranked.map(r=>`<tr><td>${r.asset}</td><td>${r.type}</td><td>${r.level}</td><td>${r.priority}</td></tr>`).join('');
+  }catch(e){
+    document.getElementById('status').textContent = 'Could not reach backend — is it deployed and running?';
+  }
+}
+function tickClock(){
+  document.getElementById('clock').textContent = 'IST ' + new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata',hour12:false});
+}
+setInterval(tickClock, 1000); tickClock();
+refresh();
+setInterval(refresh, 60000); // poll every minute; backend itself only recomputes every 15 min
+</script>
+</body>
+</html>
